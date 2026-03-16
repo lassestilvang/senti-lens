@@ -39,7 +39,7 @@ export async function searchMedicationDatabase(query: string): Promise<GroundedM
 
 /**
  * Verifies OCR-extracted medication info against grounded data.
- * @param ocrData Data extracted via Gemini 2.0 Flash
+ * @param ocrData Data extracted via Gemini 3.0 Flash
  * @returns Verification result with grounded data or safety warnings
  */
 export async function verifyMedicationInfo(ocrData: MedicationInfo): Promise<VerificationResult> {

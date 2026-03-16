@@ -2,7 +2,7 @@
  * Generates a prompt for spatial reasoning based on detected safety objects and scene context.
  * @param safetyObjects List of identified safety-critical objects.
  * @param context General description of the environment.
- * @returns A formatted prompt string for Gemini 2.0 Flash.
+ * @returns A formatted prompt string for Gemini 3.0 Flash.
  */
 export function getSpatialReasoningPrompt(safetyObjects: string[], context: string): string {
   return `

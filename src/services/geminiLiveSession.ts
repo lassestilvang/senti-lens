@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * GeminiLiveSession - manages direct streaming to Gemini 2.0 Flash via Multimodal Live API (WebSocket).
+ * GeminiLiveSession - manages direct streaming to Gemini 3.0 Flash via Multimodal Live API (WebSocket).
  * 
  * Handles:
  * - WebSocket bidirectional session
@@ -172,7 +172,7 @@ export class GeminiLiveSession {
       throw new Error('Missing Google API Key (NEXT_PUBLIC_GOOGLE_API_KEY)');
     }
 
-    const modelId = this.config.modelId || 'gemini-2.0-flash-exp';
+    const modelId = this.config.modelId || 'gemini-3.0-flash-preview';
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     this.ws = new WebSocket(url);

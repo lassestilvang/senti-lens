@@ -53,9 +53,9 @@ if [ ! -f ".env.local" ]; then
 fi
 
 # Extract API Key to verify it's not empty
-API_KEY=$(grep "GOOGLE_API_KEY" .env.local | cut -d '=' -f2)
+API_KEY=$(grep "NEXT_PUBLIC_GOOGLE_API_KEY" .env.local | cut -d '=' -f2)
 if [ -z "$API_KEY" ]; then
-    echo "❌ GOOGLE_API_KEY is missing in .env.local."
+    echo "❌ NEXT_PUBLIC_GOOGLE_API_KEY is missing in .env.local."
     exit 1
 fi
 

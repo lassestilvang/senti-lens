@@ -5,7 +5,7 @@ import { formatMedicationResponse } from '../utils/medicationSafety';
 /**
  * Orchestrates the generation of a conversational response for medication safety.
  * Combines real-time OCR with verified database data.
- * @param ocrInfo Data from Gemini 2.0 Flash
+ * @param ocrInfo Data from Gemini 3.0 Flash
  * @param groundedData Data from Gemini Function Calling (optional)
  * @returns A safe, conversational response string
  */
