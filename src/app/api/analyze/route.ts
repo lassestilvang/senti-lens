@@ -127,13 +127,14 @@ export async function POST(request: NextRequest) {
         attempts++;
         const errorMessage = error instanceof Error ? error.message : String(error);
         const isRateLimit = errorMessage.includes('429') || errorMessage.includes('quota');
+        const isTransient = errorMessage.includes('503') || errorMessage.includes('Service Unavailable');
         
-        if (isRateLimit && attempts <= maxRetries) {
-          // Extract retry wait time if present (Gemini returns something like "retry in 34.89009394s")
+        if ((isRateLimit || isTransient) && attempts <= maxRetries) {
+          // Extract retry wait time if present
           const waitMatch = errorMessage.match(/retry in ([\d.]+)s/);
-          const waitSeconds = waitMatch ? parseFloat(waitMatch[1]) : Math.pow(2, attempts);
+          const waitSeconds = waitMatch ? parseFloat(waitMatch[1]) : (isTransient ? 1 : Math.pow(2, attempts));
           
-          console.warn(`[/api/analyze] Rate limited. Retrying after ${waitSeconds}s (Attempt ${attempts}/${maxRetries})`);
+          console.warn(`[/api/analyze] ${isTransient ? 'Stable model unavailable' : 'Rate limited'}. Retrying after ${waitSeconds}s (Attempt ${attempts}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
           continue;
         }
