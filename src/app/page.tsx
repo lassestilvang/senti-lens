@@ -317,21 +317,33 @@ export default function Page() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
       <div className="w-full max-w-md flex flex-col gap-4 z-10">
-        <header className="flex items-center gap-4">
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-blue-500/20 border border-zinc-800 shrink-0">
-            <Image
-              src="/logo.png"
-              alt="SentiLens Logo"
-              fill
-              className="object-cover"
-              priority
-            />
+        <header className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-blue-500/20 border border-zinc-800 shrink-0">
+              <Image
+                src="/logo.png"
+                alt="SentiLens Logo"
+                fill
+                className="object-cover"
+                priority
+              />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold tracking-tight leading-none">SentiLens</h1>
+              <p className="text-[10px] text-zinc-400 mt-0.5 tracking-widest uppercase font-black">
+                {mode} Mode
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold tracking-tight leading-none">SentiLens</h1>
-            <p className="text-[10px] text-zinc-400 mt-0.5 tracking-widest uppercase font-black">
-              {mode} Mode
-            </p>
+
+          <div
+            className="flex items-center gap-2.5 px-3 py-1.5 bg-zinc-900/50 rounded-full border border-zinc-800 backdrop-blur"
+            data-testid="status-indicator"
+          >
+            <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              {isProcessing ? 'Processing' : 'Live Loop'}
+            </span>
           </div>
         </header>
 
@@ -485,18 +497,7 @@ export default function Page() {
           </div>
         )}
 
-        {/* Status Footer */}
-        <footer className="flex flex-col items-center gap-2 pb-4">
-          <div
-            className="flex items-center gap-3 px-5 py-2.5 bg-zinc-900/50 rounded-full border border-zinc-800 backdrop-blur"
-            data-testid="status-indicator"
-          >
-            <div className={`w-2.5 h-2.5 rounded-full ${isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`} />
-            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
-              {isProcessing ? 'Processing' : 'Live Loop'}
-            </span>
-          </div>
-        </footer>
+
       </div>
     </main>
   );
