@@ -14,6 +14,8 @@ export interface UseVoiceSessionReturn {
   sendText: (text: string) => void;
   /** Send a tool result back to Gemini */
   sendToolResult: (toolUseId: string, result: string | Record<string, unknown>) => void;
+  /** Send a video frame to Gemini */
+  sendVideoFrame: (base64Data: string) => void;
   /** Interrupt current playback */
   interrupt: () => void;
   /** Whether connected to the WebSocket */
@@ -198,6 +200,12 @@ export function useVoiceSession(
     }
   }, []);
 
+  const sendVideoFrame = useCallback((base64Data: string) => {
+    if (sessionRef.current) {
+      sessionRef.current.sendVideoFrame(base64Data);
+    }
+  }, []);
+
   const interrupt = useCallback(() => {
     if (sessionRef.current) {
       sessionRef.current.interrupt();
@@ -248,6 +256,7 @@ export function useVoiceSession(
     endSession,
     toggleCapture,
     sendText,
+    sendVideoFrame,
     sendToolResult,
     interrupt,
     isConnected,

@@ -325,6 +325,11 @@ export default function Page() {
         >
           <CameraStream
             onFrameCapture={onFrameCapture}
+            onVideoStream={(frame) => {
+              if (voice.isConnected) {
+                voice.sendVideoFrame(frame);
+              }
+            }}
             analyser={voice.analyzer}
             heartbeatIntervalMs={goal.trim() ? 1500 : 5000}
           />

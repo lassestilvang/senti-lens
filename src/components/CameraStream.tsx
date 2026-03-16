@@ -9,8 +9,10 @@ export interface CameraStreamHandle {
 
 interface CameraStreamProps {
   onFrameCapture?: (frameData: string) => void;
+  onVideoStream?: (frameData: string) => void;
   analyser?: AnalyserNode | null;
   heartbeatIntervalMs?: number;
+  videoStreamIntervalMs?: number;
 }
 
 /**
@@ -51,8 +53,10 @@ function detectSpeech(analyser: AnalyserNode, threshold: number = 0.02): boolean
 
 const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
   onFrameCapture,
+  onVideoStream,
   analyser,
   heartbeatIntervalMs = 5000,
+  videoStreamIntervalMs = 1000, // Steady 1fps for Gemini's "eyes"
 }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -168,6 +172,15 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
             const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
             onFrameCapture(frameDataUrl);
             heartbeatCounter = 0; // Reset on any capture
+          }
+
+          // ─── Continuous Video Stream (Hackathon "Wow" Factor) ───
+          if (onVideoStream) {
+            const videoTicks = Math.max(1, Math.ceil(videoStreamIntervalMs / samplingTickMs));
+            if (heartbeatCounter % videoTicks === 0) {
+              const frameDataUrl = canvas.toDataURL('image/jpeg', 0.6); // Lower quality for stream
+              onVideoStream(frameDataUrl);
+            }
           }
         }, samplingTickMs);
       } catch (err) {

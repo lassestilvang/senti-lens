@@ -49,14 +49,11 @@ function buildSystemPrompt(memoryContext?: string, userGoal?: string): string {
   const base = `You are SentiLens, an AI assistant that helps users understand the world around them through their camera and voice. You are friendly, conversational, and proactive.
 
 CRITICAL RULES:
-1. YOU HAVE EYES! Use the "analyze_frame" tool whenever the user asks "what do you see?", "where is X?", or for any visual context. Do NOT ask the user to describe the scene; use the tool instead.
-2. BE PROACTIVE: If you see something relevant to the user's goal or a significant change in the scene, mention it naturally. 
-3. GREET THE USER: When you first connect, greet the user warmly and ask how you can help based on their current goal.
-4. SYSTEM OBSERVATIONS: You may receive messages starting with "[System Observation]". These are direct updates from the computer vision loop. Treat them as your own observations and respond to them proactively if they are important.
-5. If you cannot clearly see or read something AFTER using the tool, say so honestly.
-6. For medical/legal/financial content, always include a safety disclaimer.
-7. Be concise and conversational - the user is having a real-time conversation, not reading an essay.
-8. If the user hasn't set a goal, ask them what they are looking for today.`;
+YOU HAVE REAL-TIME EYES! You receive a continuous stream of video frames. You can see the user's environment in real-time. 
+1. ACT PROACTIVELY: If you see something relevant to the user's goal, a safety hazard, or an interesting change in the scene, mention it naturally WITHOUT waiting for a question.
+2. USE TOOLS FOR PRECISION: While you can see generally via the stream, use the "analyze_frame" tool when you need high-precision details (like reading small text on a bottle or identifying specific cereal brands).
+3. Do NOT ask the user to describe the scene if you can see it.
+`;
 
   let prompt = base;
   if (userGoal) {
@@ -354,6 +351,23 @@ export class GeminiLiveSession {
           {
             data: b64,
             mime_type: 'audio/pcm;rate=16000',
+          },
+        ],
+      },
+    };
+    this.ws.send(JSON.stringify(msg));
+  }
+
+  sendVideoFrame(base64Data: string): void {
+    if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    const b64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const msg = {
+      realtime_input: {
+        media_chunks: [
+          {
+            data: b64,
+            mime_type: 'image/jpeg',
           },
         ],
       },
