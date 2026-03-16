@@ -85,121 +85,132 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
     },
   }));
 
-  useEffect(() => {
-    samplerRef.current = new FrameSampler({ motionThreshold: 5.0 });
+    const onFrameCaptureRef = useRef(onFrameCapture);
+    const onVideoStreamRef = useRef(onVideoStream);
 
-    let stream: MediaStream | null = null;
-    let intervalId: NodeJS.Timeout | null = null;
+    useEffect(() => {
+      onFrameCaptureRef.current = onFrameCapture;
+    }, [onFrameCapture]);
 
-    async function setupCamera() {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setError('Camera API not supported in this browser');
-          return;
-        }
+    useEffect(() => {
+      onVideoStreamRef.current = onVideoStream;
+    }, [onVideoStream]);
 
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false, // Audio is handled by the VoiceSession, not the camera stream
-        });
+    useEffect(() => {
+      samplerRef.current = new FrameSampler({ motionThreshold: 5.0 });
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+      let stream: MediaStream | null = null;
+      let intervalId: NodeJS.Timeout | null = null;
 
-        // ─── Create offscreen canvas for motion detection ──────────
-        if (!canvasRef.current) {
-          canvasRef.current = document.createElement('canvas');
-        }
+      async function setupCamera() {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setError('Camera API not supported in this browser');
+            return;
+          }
 
-        // ─── Sampling loop (every 200ms) ───────────────────────────
-        const samplingTickMs = 200;
-        const heartbeatTicks = Math.max(1, Math.ceil(heartbeatIntervalMs / samplingTickMs));
-        let heartbeatCounter = 0;
-        intervalId = setInterval(() => {
-          if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false, // Audio is handled by the VoiceSession, not the camera stream
+          });
 
-          const video = videoRef.current;
-          if (video.videoWidth === 0 || video.videoHeight === 0) return;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
 
-          const canvas = canvasRef.current;
-          if (!canvas) return;
+          // ─── Create offscreen canvas for motion detection ──────────
+          if (!canvasRef.current) {
+            canvasRef.current = document.createElement('canvas');
+          }
 
-          // Downscale for performance (max 1024px on either side)
-          const MAX_DIM = 1024;
-          let width = video.videoWidth;
-          let height = video.videoHeight;
-          if (width > MAX_DIM || height > MAX_DIM) {
-            if (width > height) {
-              height = Math.round((height * MAX_DIM) / width);
-              width = MAX_DIM;
-            } else {
-              width = Math.round((width * MAX_DIM) / height);
-              height = MAX_DIM;
+          // ─── Sampling loop (every 200ms) ───────────────────────────
+          const samplingTickMs = 200;
+          const heartbeatTicks = Math.max(1, Math.ceil(heartbeatIntervalMs / samplingTickMs));
+          let heartbeatCounter = 0;
+          intervalId = setInterval(() => {
+            if (!samplerRef.current || !onFrameCaptureRef.current || !videoRef.current) return;
+
+            const video = videoRef.current;
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            // Downscale for performance (max 1024px on either side)
+            const MAX_DIM = 1024;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            if (width > MAX_DIM || height > MAX_DIM) {
+              if (width > height) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              } else {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
             }
-          }
-          canvas.width = width;
-          canvas.height = height;
+            canvas.width = width;
+            canvas.height = height;
 
-          // willReadFrequently optimization
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (!ctx) return;
+            // willReadFrequently optimization
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) return;
 
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          // Compute motion level
-          let motionLevel = 0;
-          if (prevFrameRef.current && prevFrameRef.current.data.length === currentFrame.data.length) {
-            motionLevel = computeMotionLevel(prevFrameRef.current, currentFrame);
-          }
-          prevFrameRef.current = currentFrame;
-
-          // Detect speech via VAD (only if an analyser is available)
-          const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
-
-          // Use the FrameSampler to decide if we should capture
-          let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
-
-          // Heartbeat sampling ensures periodic captures even in static scenes.
-          heartbeatCounter++;
-          if (heartbeatCounter >= heartbeatTicks) {
-            triggerCapture = true;
-            heartbeatCounter = 0;
-          }
-
-          if (triggerCapture) {
-            const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            onFrameCapture(frameDataUrl);
-            heartbeatCounter = 0; // Reset on any capture
-          }
-
-          // ─── Continuous Video Stream (Hackathon "Wow" Factor) ───
-          if (onVideoStream) {
-            const videoTicks = Math.max(1, Math.ceil(videoStreamIntervalMs / samplingTickMs));
-            if (heartbeatCounter % videoTicks === 0) {
-              const frameDataUrl = canvas.toDataURL('image/jpeg', 0.6); // Lower quality for stream
-              onVideoStream(frameDataUrl);
+            // Compute motion level
+            let motionLevel = 0;
+            if (prevFrameRef.current && prevFrameRef.current.data.length === currentFrame.data.length) {
+              motionLevel = computeMotionLevel(prevFrameRef.current, currentFrame);
             }
-          }
-        }, samplingTickMs);
-      } catch (err) {
-        console.error('Error accessing camera.', err);
-        setError('Unable to access camera');
-      }
-    }
+            prevFrameRef.current = currentFrame;
 
-    setupCamera();
+            // Detect speech via VAD (only if an analyser is available)
+            const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
 
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+            // Use the FrameSampler to decide if we should capture
+            let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
+
+            // Heartbeat sampling ensures periodic captures even in static scenes.
+            heartbeatCounter++;
+            if (heartbeatCounter >= heartbeatTicks) {
+              triggerCapture = true;
+              heartbeatCounter = 0;
+            }
+
+            if (triggerCapture) {
+              const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              onFrameCaptureRef.current(frameDataUrl);
+              heartbeatCounter = 0; // Reset on any capture
+            }
+
+            // ─── Continuous Video Stream (Hackathon "Wow" Factor) ───
+            if (onVideoStreamRef.current) {
+              const videoTicks = Math.max(1, Math.ceil(videoStreamIntervalMs / samplingTickMs));
+              if (heartbeatCounter % videoTicks === 0) {
+                const frameDataUrl = canvas.toDataURL('image/jpeg', 0.6); // Lower quality for stream
+                onVideoStreamRef.current(frameDataUrl);
+              }
+            }
+          }, samplingTickMs);
+        } catch (err) {
+          console.error('Error accessing camera.', err);
+          setError('Unable to access camera');
+        }
       }
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [heartbeatIntervalMs, onFrameCapture, onVideoStream, videoStreamIntervalMs, ref]);
+
+      setupCamera();
+
+      return () => {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+      };
+    }, [heartbeatIntervalMs, videoStreamIntervalMs]); // Removed onFrameCapture and onVideoStream from deps
 
   // Update analyserRef when prop changes
   useEffect(() => {

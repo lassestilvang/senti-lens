@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { GeminiLiveSession, VoiceEvent, VoiceSessionConfig } from '../services/geminiLiveSession';
 
 export interface UseVoiceSessionReturn {
@@ -233,7 +233,7 @@ export function useVoiceSession(
     };
   }, []);
 
-  return {
+  const returnValue = useMemo(() => ({
     startSession,
     endSession,
     toggleCapture,
@@ -252,5 +252,26 @@ export function useVoiceSession(
     eventLog,
     analyzer,
     error,
-  };
+  }), [
+    startSession,
+    endSession,
+    toggleCapture,
+    sendText,
+    sendVideoFrame,
+    sendSystemMessage,
+    sendToolResult,
+    interrupt,
+    isConnected,
+    isReconnecting,
+    isCapturing,
+    isGrounded,
+    transcript,
+    lastResponse,
+    lastToolCall,
+    eventLog,
+    analyzer,
+    error,
+  ]);
+
+  return returnValue;
 }

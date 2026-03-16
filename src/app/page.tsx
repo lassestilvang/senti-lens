@@ -107,12 +107,19 @@ export default function Page() {
     }
   };
 
+  // Stable references for voice functions to keep onFrameCapture stable
+  const voiceRef = useRef(voice);
+  useEffect(() => {
+    voiceRef.current = voice;
+  }, [voice]);
+
   const onFrameCapture = useCallback(async (frameData: string) => {
     // Read current state from refs to avoid re-creating this callback
     const currentMode = modeRef.current;
     const currentGoal = goalRef.current;
     const currentMemory = memoryRef.current;
     const currentLastSuggestion = lastSuggestionRef.current;
+    const v = voiceRef.current;
 
     try {
       setIsProcessing(true);
@@ -147,12 +154,11 @@ export default function Page() {
       const goalText = (currentGoal || inferredGoalRef.current).toLowerCase().trim();
       const now = Date.now();
       
-      console.error('[Orchestrator] Vision analysis:', { objects, goalText, mode: currentMode });
+      console.log('[Orchestrator] Vision analysis:', { objects, goalText, mode: currentMode });
 
       if (goalText) {
         const matchedObject = findGoalObjectMatch(goalText, objects);
-        console.error('[Orchestrator] Match check:', { goalText, matchedObject });
-
+        
         if (matchedObject) {
           const recentlySeenSameObject =
             objectPresenceRef.current.object === matchedObject
@@ -165,19 +171,16 @@ export default function Page() {
             const isDuplicateWithinCooldown =
               previousObservation === observation && now - previousTimestamp < PROACTIVE_OBSERVATION_COOLDOWN_MS;
 
-            console.error('[Orchestrator] Sighting state:', { recentlySeenSameObject, isDuplicateWithinCooldown, voiceConnected: voiceConnectedRef.current });
-
             if (!isDuplicateWithinCooldown) {
               setLastSuggestion(`Spotted ${matchedObject} in frame.`);
               playEarcon('chime');
 
               if (voiceConnectedRef.current) {
-                console.error('[Orchestrator] EMITTING TO VOICE:', observation);
+                console.log('[Orchestrator] EMITTING TO VOICE:', observation);
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
-                voice.interrupt();
-                voice.sendSystemMessage(`${observation} Please tell the user this immediately in one short sentence.`);
+                v.interrupt();
+                v.sendSystemMessage(`${observation} Please tell the user this immediately in one short sentence.`);
               } else {
-                console.error('[Orchestrator] Queuing observation (voice not connected)');
                 pendingObservationRef.current = observation;
               }
             }
@@ -191,7 +194,7 @@ export default function Page() {
       if (isImmediateHazard(objects)) {
         const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
         setLastSuggestion(`Hazard Detected: ${hazard}`);
-        voice.interrupt();
+        v.interrupt();
         playEarcon('chime');
       }
 
@@ -230,8 +233,8 @@ export default function Page() {
             setLastSuggestion(suggestionResult.suggestionPrompt);
             playEarcon('chime');
             if (voiceConnectedRef.current) {
-              voice.interrupt();
-              voice.sendSystemMessage(
+              v.interrupt();
+              v.sendSystemMessage(
                 `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
               );
             }
@@ -245,7 +248,7 @@ export default function Page() {
     } finally {
       setIsProcessing(false);
     }
-  }, [voice]); // Stable reference — reads state via refs
+  }, []); // Truly stable callback
 
   // Handle Tool Calls from Gemini Live
   useEffect(() => {
@@ -301,8 +304,8 @@ export default function Page() {
 
   // Handle Initial Greeting
   useEffect(() => {
-    console.log('[Page] Greeting Effect check:', { isGrounded: voice.isGrounded, isConnected: voice.isConnected, greetingSent: greetingSentRef.current });
     if (voice.isGrounded && !greetingSentRef.current) {
+      console.log('[Page] Voice grounded. Sending initial greeting.');
       greetingSentRef.current = true;
       const currentGoal = goalRef.current;
       const greeting = currentGoal 
@@ -310,9 +313,12 @@ export default function Page() {
         : "Hello! I'm ready to help. What are we looking for today?";
       voice.sendText(greeting);
     } else if (!voice.isConnected) {
+      if (greetingSentRef.current) {
+        console.log('[Page] Voice disconnected. Resetting greeting flag.');
+      }
       greetingSentRef.current = false;
     }
-  }, [voice.isGrounded, voice.isConnected, voice.sendText, voice]);
+  }, [voice.isGrounded, voice.isConnected, voice.sendText]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
