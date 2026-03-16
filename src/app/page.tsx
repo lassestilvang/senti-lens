@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import CameraStream from '../components/CameraStream';
 import { ModeSelector, AssistantMode } from '../components/ModeSelector';
 import DocumentOverlay from '../components/DocumentOverlay';
@@ -316,8 +317,16 @@ export default function Page() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
       <div className="w-full max-w-md flex flex-col gap-4 z-10">
-        {/* Header */}
-        <header className="text-center">
+        <header className="flex flex-col items-center gap-2">
+          <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/20 border border-zinc-800">
+            <Image
+              src="/logo.png"
+              alt="SentiLens Logo"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
           <h1 className="text-3xl font-bold tracking-tight">SentiLens</h1>
           <p className="text-sm text-zinc-400 mt-1 tracking-wide uppercase font-semibold">
             {mode} Mode
