@@ -6,7 +6,7 @@ SentiLens is a real-time assistive application designed to help visually impaire
 
 ```mermaid
 graph TD
-    Client[Next.js Frontend] -->|Frame Capture| API_Analyze[/api/analyze]
+    Client[Next.js Frontend] -->|Frame Capture| API_Analyze["/api/analyze"]
     API_Analyze -->|Vision/OCR| Gemini_Flash[Google Gemini 3.0 Flash]
     
     Client <-->|WebSocket| Live_API[Gemini Multimodal Live API]
@@ -14,7 +14,7 @@ graph TD
     API_Analyze -->|JSON Results| Client
     Live_API -->|Real-Time Voice| Client
     
-    Client <-->|Session State| API_Memory[/api/memory]
+    Client <-->|Session State| API_Memory["/api/memory"]
     API_Memory <-->|Persistence| Firestore[Firebase Firestore]
     
     subgraph GCP/Firebase
