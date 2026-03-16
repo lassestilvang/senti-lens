@@ -129,4 +129,4 @@ For full SSR and API Route support (required for `/api/analyze`), use the modern
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
