@@ -198,6 +198,9 @@ export class GeminiLiveSession {
               functionDeclarations: getGeminiTools(),
             },
           ],
+          proactivity: {
+            proactiveAudio: true,
+          },
         },
       };
       console.error('[GeminiLiveSession] Sending setup message:', JSON.stringify(setupMsg, null, 2));
@@ -393,6 +396,10 @@ export class GeminiLiveSession {
         },
       },
     };
+    // Log occasionally to avoid spamming, but confirm it's working
+    if (Math.random() < 0.01) {
+      console.error('[GeminiLiveSession] Outgoing video frame (sample):', b64.substring(0, 50) + '...');
+    }
     this.ws.send(JSON.stringify(msg));
   }
 
