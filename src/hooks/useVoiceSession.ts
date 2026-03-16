@@ -18,6 +18,8 @@ export interface UseVoiceSessionReturn {
   interrupt: () => void;
   /** Whether connected to the WebSocket */
   isConnected: boolean;
+  /** Whether currently reconnecting */
+  isReconnecting: boolean;
   /** Whether microphone is capturing */
   isCapturing: boolean;
   /** Current transcription from Gemini */
@@ -41,6 +43,7 @@ export function useVoiceSession(
   options?: { memoryContext?: string; userGoal?: string }
 ): UseVoiceSessionReturn {
   const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastResponse, setLastResponse] = useState('');
@@ -88,10 +91,17 @@ export function useVoiceSession(
         switch (event.type) {
           case 'connected':
             setIsConnected(true);
+            setIsReconnecting(false);
+            break;
+            
+          case 'reconnecting':
+            setIsConnected(false);
+            setIsReconnecting(true);
             break;
 
           case 'disconnected':
             setIsConnected(false);
+            setIsReconnecting(false);
             setIsCapturing(false);
             break;
 
@@ -161,7 +171,17 @@ export function useVoiceSession(
         setIsCapturing(true);
         setAnalyzer(sessionRef.current.analyzerNode);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to start microphone capture');
+        if (err instanceof Error) {
+          if (err.name === 'NotAllowedError') {
+             setError('Microphone access denied. Please enable it in browser settings.');
+          } else if (err.name === 'NotFoundError') {
+             setError('No microphone found on this device.');
+          } else {
+             setError(err.message);
+          }
+        } else {
+          setError('Failed to start microphone capture');
+        }
       }
     }
   }, [isCapturing]);
@@ -231,6 +251,7 @@ export function useVoiceSession(
     sendToolResult,
     interrupt,
     isConnected,
+    isReconnecting,
     isCapturing,
     isGrounded,
     transcript,

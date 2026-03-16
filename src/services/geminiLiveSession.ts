@@ -29,6 +29,7 @@ export type VoiceEventType =
   | 'transcript'
   | 'toolUse'
   | 'turnComplete'
+  | 'reconnecting'
   | 'error';
 
 export interface VoiceEvent {
@@ -39,6 +40,7 @@ export interface VoiceEvent {
   toolUseId?: string;
   toolInput?: Record<string, unknown>;
   error?: string;
+  reconnectAttempt?: number;
 }
 
 type VoiceEventCallback = (event: VoiceEvent) => void;
@@ -118,6 +120,10 @@ export class GeminiLiveSession {
   private nextPlaybackTime = 0;
   private analyzer: AnalyserNode | null = null;
   private activeSources: Set<AudioBufferSourceNode> = new Set();
+  
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -154,7 +160,12 @@ export class GeminiLiveSession {
   }
 
   async connect(): Promise<void> {
-    if (this.isActive) return;
+    if (this.isActive && this.ws?.readyState === WebSocket.OPEN) return;
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
 
     const apiKey = this.config.apiKey || process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
     if (!apiKey) {
@@ -168,7 +179,10 @@ export class GeminiLiveSession {
 
     this.ws.onopen = () => {
       this.isActive = true;
+      this.reconnectAttempts = 0;
       this.emit({ type: 'connected' });
+      
+      // ... rest of setup ...
 
       // Send setup message
       const setupMsg = {
@@ -194,10 +208,16 @@ export class GeminiLiveSession {
       this.processOutputEvent(event.data);
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this.isActive = false;
       this.emit({ type: 'disconnected' });
-      this.emit({ type: 'sessionEnded' });
+      
+      // Attempt reconnection if not closed cleanly
+      if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.attemptReconnection();
+      } else {
+        this.emit({ type: 'sessionEnded' });
+      }
     };
 
     this.ws.onerror = (err) => {
@@ -434,5 +454,22 @@ export class GeminiLiveSession {
     } catch (err) {
       console.error('[GeminiLiveSession] Audio playback error:', err);
     }
+  }
+
+  private attemptReconnection(): void {
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    
+    this.emit({ 
+      type: 'reconnecting', 
+      reconnectAttempt: this.reconnectAttempts 
+    });
+
+    this.reconnectTimeout = setTimeout(() => {
+      console.log(`[GeminiLiveSession] Reconnecting... (attempt ${this.reconnectAttempts})`);
+      this.connect().catch(err => {
+        console.error('[GeminiLiveSession] Reconnection failed:', err);
+      });
+    }, delay);
   }
 }

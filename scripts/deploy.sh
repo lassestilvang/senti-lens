@@ -42,29 +42,35 @@ fi
 
 echo ""
 
-# ─── Step 2: Build Next.js ──────────────────────────────────────────────
+# ─── Step 2: Build & Validate ──────────────────────────────────────────
 
-echo "🔨 Step 1/2: Building Next.js application..."
+echo "🔨 Step 1/3: Validating and building..."
 cd "$PROJECT_DIR"
+
+if [ ! -f ".env.local" ]; then
+    echo "❌ .env.local not found. Deployment aborted."
+    exit 1
+fi
+
+# Extract API Key to verify it's not empty
+API_KEY=$(grep "GOOGLE_API_KEY" .env.local | cut -d '=' -f2)
+if [ -z "$API_KEY" ]; then
+    echo "❌ GOOGLE_API_KEY is missing in .env.local."
+    exit 1
+fi
 
 if [ ! -d "node_modules" ]; then
     echo "   📦 Installing app dependencies..."
     npm install --silent
 fi
 
-# Ensure .env.local exists or use .env.example
-if [ ! -f ".env.local" ] && [ -f ".env.example" ]; then
-    echo "   ⚠️  .env.local not found. Creating from .env.example..."
-    cp .env.example .env.local
-fi
-
 npm run build
 
 # ─── Step 3: Deploy to Firebase ─────────────────────────────────────────
 
-echo "🚀 Step 2/2: Deploying to Firebase..."
+echo "🚀 Step 2/3: Deploying Hosting & Firestore..."
 
-firebase deploy --only hosting
+firebase deploy --only hosting,firestore
 
 echo ""
 echo "════════════════════════════════════════════════════════════"
