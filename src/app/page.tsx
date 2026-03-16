@@ -64,7 +64,7 @@ export default function Page() {
     if (goal.trim()) {
       inferredGoalRef.current = goal.trim();
     }
-  }, [goal]);
+  }, [goal, voice]);
   useEffect(() => { memoryRef.current = memory; }, [memory]);
   useEffect(() => { lastSuggestionRef.current = lastSuggestion; }, [lastSuggestion]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
@@ -83,7 +83,7 @@ export default function Page() {
     lastSpokenObservationRef.current = { text: pendingObservation, timestamp: Date.now() };
     voice.interrupt();
     voice.sendText(`${pendingObservation} Please tell the user this immediately in one short sentence.`);
-  }, [voice.isConnected, voice.interrupt, voice.sendText]);
+  }, [voice.isConnected, voice.interrupt, voice.sendText, voice]);
 
   const handleSetGoal = () => {
     const trimmedGoal = inputValue.trim();
@@ -244,7 +244,7 @@ export default function Page() {
     } finally {
       setIsProcessing(false);
     }
-  }, []); // Stable reference — reads state via refs
+  }, [voice]); // Stable reference — reads state via refs
 
   // Handle Tool Calls from Gemini Live
   useEffect(() => {
@@ -296,7 +296,7 @@ export default function Page() {
         voice.sendToolResult(toolUseId, 'Memory and goals updated.');
       }
     }
-  }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult]);
+  }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult, voice]);
 
   // Handle Initial Greeting
   useEffect(() => {
@@ -311,7 +311,7 @@ export default function Page() {
     } else if (!voice.isConnected) {
       greetingSentRef.current = false;
     }
-  }, [voice.isGrounded, voice.isConnected, voice.sendText]);
+  }, [voice.isGrounded, voice.isConnected, voice.sendText, voice]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
