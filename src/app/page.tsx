@@ -326,7 +326,7 @@ export default function Page() {
           <CameraStream
             onFrameCapture={onFrameCapture}
             onVideoStream={(frame) => {
-              if (voice.isConnected) {
+              if (voice.isGrounded) {
                 voice.sendVideoFrame(frame);
               }
             }}

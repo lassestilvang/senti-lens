@@ -118,6 +118,7 @@ export class GeminiLiveSession {
   private analyzer: AnalyserNode | null = null;
   private activeSources: Set<AudioBufferSourceNode> = new Set();
 
+  private isSetupComplete = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: NodeJS.Timeout | null = null;
@@ -169,7 +170,8 @@ export class GeminiLiveSession {
       throw new Error('Missing Google API Key (NEXT_PUBLIC_GOOGLE_API_KEY)');
     }
 
-    const modelId = this.config.modelId || 'gemini-3-flash-preview';
+    // Use the latest native audio model for the best experience
+    const modelId = process.env.NEXT_PUBLIC_GEMINI_MODEL_ID || this.config.modelId || 'gemini-2.5-flash-native-audio-preview-12-2025';
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     this.ws = new WebSocket(url);
@@ -181,19 +183,19 @@ export class GeminiLiveSession {
 
       // ... rest of setup ...
 
-      // Send setup message
+      // Send setup message (using camelCase for protocol consistency)
       const setupMsg = {
         setup: {
           model: `models/${modelId}`,
-          generation_config: {
-            response_modalities: ['audio'],
+          generationConfig: {
+            responseModalities: ['audio'],
           },
-          system_instruction: {
+          systemInstruction: {
             parts: [{ text: buildSystemPrompt(this.config.memoryContext, this.config.userGoal) }],
           },
           tools: [
             {
-              function_declarations: getGeminiTools(),
+              functionDeclarations: getGeminiTools(),
             },
           ],
         },
@@ -234,6 +236,8 @@ export class GeminiLiveSession {
       const payload = JSON.parse(data);
 
       if (payload.setupComplete) {
+        console.log('[GeminiLiveSession] Setup complete');
+        this.isSetupComplete = true;
         this.emit({ type: 'sessionStarted' });
         return;
       }
@@ -342,34 +346,30 @@ export class GeminiLiveSession {
   }
 
   private sendAudio(pcmData: Int16Array): void {
-    if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.isSetupComplete || !this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
+    const b64 = pcmData ? btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer))) : '';
     const msg = {
-      realtime_input: {
-        media_chunks: [
-          {
-            data: b64,
-            mime_type: 'audio/pcm;rate=16000',
-          },
-        ],
+      realtimeInput: {
+        audio: {
+          data: b64,
+          mimeType: 'audio/pcm;rate=16000',
+        },
       },
     };
     this.ws.send(JSON.stringify(msg));
   }
 
   sendVideoFrame(base64Data: string): void {
-    if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (!this.isSetupComplete || !this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const b64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
     const msg = {
-      realtime_input: {
-        media_chunks: [
-          {
-            data: b64,
-            mime_type: 'image/jpeg',
-          },
-        ],
+      realtimeInput: {
+        video: {
+          data: b64,
+          mimeType: 'image/jpeg',
+        },
       },
     };
     this.ws.send(JSON.stringify(msg));
@@ -379,7 +379,7 @@ export class GeminiLiveSession {
     if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const msg = {
-      realtime_input: {
+      realtimeInput: {
         text,
       },
     };
@@ -390,11 +390,11 @@ export class GeminiLiveSession {
     if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     const msg = {
-      tool_response: {
-        function_responses: [
+      toolResponse: {
+        functionResponses: [
           {
             id: toolUseId,
-            response: typeof result === 'string' ? { result } : result,
+            response: typeof result === 'string' ? { output: { result } } : { output: result },
           },
         ],
       },
@@ -406,7 +406,7 @@ export class GeminiLiveSession {
     this.stopPlayback();
     if (this.isActive && this.ws && this.ws.readyState === WebSocket.OPEN) {
       // Multimodal Live API supports client interrupts
-      this.ws.send(JSON.stringify({ client_content: { turn_complete: true, interrupt: true } }));
+      this.ws.send(JSON.stringify({ clientContent: { turnComplete: true, interrupt: true } }));
     }
     this.emit({ type: 'text', text: '[Interrupted]' });
   }
