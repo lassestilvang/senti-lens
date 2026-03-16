@@ -80,8 +80,16 @@ npm test
 
 SentiLens is optimized for deployment on **Firebase Hosting**.
 
-### 1. Simple Deployment (Static Export)
-The current repository is pre-configured for static export to Firebase.
+### 1. Automated Deployment (Recommended)
+The fastest way to deploy is using the included deployment script:
+
+```bash
+npm run deploy
+```
+This script validates your environment, builds the project, and deploys both Hosting and Firestore rules.
+
+### 2. Manual Deployment (Static Export)
+If you prefer manual steps:
 
 1.  **Export the project:**
     ```bash
