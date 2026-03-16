@@ -236,6 +236,7 @@ export class GeminiLiveSession {
 
     try {
       const payload = JSON.parse(data);
+      console.log('[GeminiLiveSession] Received payload:', Object.keys(payload));
 
       if (payload.setupComplete) {
         console.log('[GeminiLiveSession] Setup complete');
@@ -246,16 +247,20 @@ export class GeminiLiveSession {
 
       if (payload.serverContent) {
         const content = payload.serverContent;
+        console.log('[GeminiLiveSession] Server content:', Object.keys(content));
 
         if (content.modelTurn) {
           const parts = content.modelTurn.parts || [];
+          console.log(`[GeminiLiveSession] Model turn parts: ${parts.length}`);
           for (const part of parts) {
             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+              console.log('[GeminiLiveSession] Playing received audio chunk');
               const audioBytes = Uint8Array.from(atob(part.inlineData.data), c => c.charCodeAt(0));
               this.playAudio(audioBytes.buffer);
               this.emit({ type: 'audio', audio: audioBytes.buffer });
             }
             if (part.text) {
+              console.log('[GeminiLiveSession] Received text:', part.text);
               this.emit({ type: 'text', text: part.text });
             }
           }
@@ -350,7 +355,15 @@ export class GeminiLiveSession {
   private sendAudio(pcmData: Int16Array): void {
     if (!this.isSetupComplete || !this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-    const b64 = pcmData ? btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer))) : '';
+    // Use a more robust base64 encoding to avoid stack overflow
+    const uint8 = new Uint8Array(pcmData.buffer);
+    let binary = '';
+    const len = uint8.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(uint8[i]);
+    }
+    const b64 = btoa(binary);
+
     const msg = {
       realtimeInput: {
         audio: {
