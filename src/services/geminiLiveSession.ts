@@ -411,6 +411,29 @@ export class GeminiLiveSession {
         text,
       },
     };
+    console.error('[GeminiLiveSession] Sending user text:', text);
+    this.ws.send(JSON.stringify(msg));
+  }
+
+  /**
+   * Forcefully inject a system-level observation to prompt an immediate reaction.
+   * Uses clientContent to ensure it's treated as a turn update.
+   */
+  sendSystemMessage(text: string): void {
+    if (!this.isActive || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    const msg = {
+      clientContent: {
+        turns: [
+          {
+            role: 'user',
+            parts: [{ text: `[SYSTEM OBSERVATION] ${text}` }],
+          },
+        ],
+        turnComplete: true,
+      },
+    };
+    console.error('[GeminiLiveSession] Sending system message:', text);
     this.ws.send(JSON.stringify(msg));
   }
 

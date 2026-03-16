@@ -167,7 +167,7 @@ export default function Page() {
               if (voiceConnectedRef.current) {
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
                 voice.interrupt();
-                voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
+                voice.sendSystemMessage(`${observation} Please tell the user this immediately in one short sentence.`);
               } else {
                 pendingObservationRef.current = observation;
               }
@@ -224,7 +224,7 @@ export default function Page() {
             playEarcon('chime');
             if (voiceConnectedRef.current) {
               voice.interrupt();
-              voice.sendText(
+              voice.sendSystemMessage(
                 `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
               );
             }
