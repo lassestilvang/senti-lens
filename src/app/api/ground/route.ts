@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
-const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-3.0-flash-preview';
+const MODEL_ID = process.env.GEMINI_MODEL_ID || 'gemini-3-flash-preview';
 
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 

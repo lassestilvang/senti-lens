@@ -120,7 +120,7 @@ export class GeminiLiveSession {
   private nextPlaybackTime = 0;
   private analyzer: AnalyserNode | null = null;
   private activeSources: Set<AudioBufferSourceNode> = new Set();
-  
+
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout: NodeJS.Timeout | null = null;
@@ -172,7 +172,7 @@ export class GeminiLiveSession {
       throw new Error('Missing Google API Key (NEXT_PUBLIC_GOOGLE_API_KEY)');
     }
 
-    const modelId = this.config.modelId || 'gemini-3.0-flash-preview';
+    const modelId = this.config.modelId || 'gemini-3-flash-preview';
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     this.ws = new WebSocket(url);
@@ -181,7 +181,7 @@ export class GeminiLiveSession {
       this.isActive = true;
       this.reconnectAttempts = 0;
       this.emit({ type: 'connected' });
-      
+
       // ... rest of setup ...
 
       // Send setup message
@@ -211,7 +211,7 @@ export class GeminiLiveSession {
     this.ws.onclose = (event) => {
       this.isActive = false;
       this.emit({ type: 'disconnected' });
-      
+
       // Attempt reconnection if not closed cleanly
       if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
         this.attemptReconnection();
@@ -228,9 +228,9 @@ export class GeminiLiveSession {
 
   private processOutputEvent(data: Blob | string): void {
     if (typeof data !== 'string') {
-        // Data might be binary audio if configured as such, but Multimodal Live API 
-        // usually sends JSON with base64 audio in this alpha version.
-        return;
+      // Data might be binary audio if configured as such, but Multimodal Live API 
+      // usually sends JSON with base64 audio in this alpha version.
+      return;
     }
 
     try {
@@ -243,7 +243,7 @@ export class GeminiLiveSession {
 
       if (payload.serverContent) {
         const content = payload.serverContent;
-        
+
         if (content.modelTurn) {
           const parts = content.modelTurn.parts || [];
           for (const part of parts) {
@@ -259,11 +259,11 @@ export class GeminiLiveSession {
         }
 
         if (content.turnComplete) {
-            this.emit({ type: 'turnComplete' });
+          this.emit({ type: 'turnComplete' });
         }
 
         if (content.interrupted) {
-            this.stopPlayback();
+          this.stopPlayback();
         }
         return;
       }
@@ -271,12 +271,12 @@ export class GeminiLiveSession {
       if (payload.toolCall) {
         const toolCalls = payload.toolCall.functionCalls || [];
         for (const tc of toolCalls) {
-            this.emit({
-                type: 'toolUse',
-                toolUseId: tc.id,
-                toolName: tc.name,
-                toolInput: tc.args || {},
-            });
+          this.emit({
+            type: 'toolUse',
+            toolUseId: tc.id,
+            toolName: tc.name,
+            toolInput: tc.args || {},
+          });
         }
         return;
       }
@@ -391,8 +391,8 @@ export class GeminiLiveSession {
   interrupt(): void {
     this.stopPlayback();
     if (this.isActive && this.ws && this.ws.readyState === WebSocket.OPEN) {
-        // Multimodal Live API supports client interrupts
-        this.ws.send(JSON.stringify({ client_content: { turn_complete: true, interrupt: true } }));
+      // Multimodal Live API supports client interrupts
+      this.ws.send(JSON.stringify({ client_content: { turn_complete: true, interrupt: true } }));
     }
     this.emit({ type: 'text', text: '[Interrupted]' });
   }
@@ -443,7 +443,7 @@ export class GeminiLiveSession {
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
       this.activeSources.add(source);
-      
+
       const startTime = Math.max(ctx.currentTime, this.nextPlaybackTime);
       source.start(startTime);
       this.nextPlaybackTime = startTime + audioBuffer.duration;
@@ -459,10 +459,10 @@ export class GeminiLiveSession {
   private attemptReconnection(): void {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
-    
-    this.emit({ 
-      type: 'reconnecting', 
-      reconnectAttempt: this.reconnectAttempts 
+
+    this.emit({
+      type: 'reconnecting',
+      reconnectAttempt: this.reconnectAttempts
     });
 
     this.reconnectTimeout = setTimeout(() => {
