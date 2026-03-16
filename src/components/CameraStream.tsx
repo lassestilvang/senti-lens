@@ -199,7 +199,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
         clearInterval(intervalId);
       }
     };
-  }, [heartbeatIntervalMs, onFrameCapture, ref]);
+  }, [heartbeatIntervalMs, onFrameCapture, onVideoStream, videoStreamIntervalMs, ref]);
 
   // Update analyserRef when prop changes
   useEffect(() => {
