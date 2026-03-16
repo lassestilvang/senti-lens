@@ -144,9 +144,13 @@ export default function Page() {
 
       // Proactive Sight: If AI sees something related to the goal
       const goalText = (currentGoal || inferredGoalRef.current).toLowerCase().trim();
+      const now = Date.now();
+      
+      console.error('[Orchestrator] Vision analysis:', { objects, goalText, mode: currentMode });
+
       if (goalText) {
         const matchedObject = findGoalObjectMatch(goalText, objects);
-        const now = Date.now();
+        console.error('[Orchestrator] Match check:', { goalText, matchedObject });
 
         if (matchedObject) {
           const recentlySeenSameObject =
@@ -160,19 +164,21 @@ export default function Page() {
             const isDuplicateWithinCooldown =
               previousObservation === observation && now - previousTimestamp < PROACTIVE_OBSERVATION_COOLDOWN_MS;
 
+            console.error('[Orchestrator] Sighting state:', { recentlySeenSameObject, isDuplicateWithinCooldown, voiceConnected: voiceConnectedRef.current });
+
             if (!isDuplicateWithinCooldown) {
               setLastSuggestion(`Spotted ${matchedObject} in frame.`);
               playEarcon('chime');
 
               if (voiceConnectedRef.current) {
+                console.error('[Orchestrator] EMITTING TO VOICE:', observation);
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
                 voice.interrupt();
                 voice.sendSystemMessage(`${observation} Please tell the user this immediately in one short sentence.`);
               } else {
+                console.error('[Orchestrator] Queuing observation (voice not connected)');
                 pendingObservationRef.current = observation;
               }
-
-              console.info('[Page] Proactive Sight Observation queued:', observation);
             }
           }
         } else if (now - objectPresenceRef.current.lastSeenAt > OBJECT_REAPPEARANCE_MS) {
