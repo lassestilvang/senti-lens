@@ -5,6 +5,11 @@ export interface SceneAnalysis {
   confidence?: number;
 }
 
+export interface ServiceError extends Error {
+  code?: string;
+  retryAfter?: number;
+}
+
 export interface DocumentAnalysis {
   fullText: string;
   documentType: string;
@@ -65,10 +70,14 @@ async function callAnalyzeApi(image: string, mode: string, question?: string) {
     // Try to extract the structured error from the API response
     let errorMessage = `Analysis failed (${response.status})`;
     let errorCode = 'UNKNOWN';
+    let retryAfter: number | undefined;
+
     try {
       const body = await response.json();
       if (body.error) errorMessage = body.error;
       if (body.code) errorCode = body.code;
+      if (body.retryAfter) retryAfter = body.retryAfter;
+
       // Log structured debug info if present
       if (body.debug) {
         console.error('[VisionService] Detailed Error:', body.debug);
@@ -77,8 +86,11 @@ async function callAnalyzeApi(image: string, mode: string, question?: string) {
       // body wasn't JSON — keep the generic message
     }
 
-    const err = new Error(errorMessage);
-    (err as Error & { code: string }).code = errorCode;
+    const err = new Error(errorMessage) as ServiceError;
+    err.code = errorCode;
+    if (retryAfter !== undefined) {
+      err.retryAfter = retryAfter;
+    }
     throw err;
   }
 

@@ -106,15 +106,44 @@ export async function POST(request: NextRequest) {
     
     const prompt = getPromptForMode(body.mode, body.question);
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: 'image/jpeg'
+    // Initial retry logic for 429s (up to 3 retries)
+    let result;
+    let attempts = 0;
+    const maxRetries = 2;
+
+    while (attempts <= maxRetries) {
+      try {
+        result = await model.generateContent([
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: 'image/jpeg'
+            }
+          },
+          { text: prompt }
+        ]);
+        break; // Success!
+      } catch (error) {
+        attempts++;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isRateLimit = errorMessage.includes('429') || errorMessage.includes('quota');
+        
+        if (isRateLimit && attempts <= maxRetries) {
+          // Extract retry wait time if present (Gemini returns something like "retry in 34.89009394s")
+          const waitMatch = errorMessage.match(/retry in ([\d.]+)s/);
+          const waitSeconds = waitMatch ? parseFloat(waitMatch[1]) : Math.pow(2, attempts);
+          
+          console.warn(`[/api/analyze] Rate limited. Retrying after ${waitSeconds}s (Attempt ${attempts}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+          continue;
         }
-      },
-      { text: prompt }
-    ]);
+        throw error; // Re-throw if not rate limit or max retries reached
+      }
+    }
+
+    if (!result) {
+      throw new Error('Analysis failed after retries');
+    }
 
     const response = await result.response;
     const responseText = response.text();
@@ -139,11 +168,16 @@ export async function POST(request: NextRequest) {
 
     const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
     
-    if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+    if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        // Extract retry seconds for the client
+        const waitMatch = errorMessage.match(/retry in ([\d.]+)s/);
+        const retryAfter = waitMatch ? Math.ceil(parseFloat(waitMatch[1])) : 30;
+
         return NextResponse.json(
           {
-            error: 'Too many requests — please wait a moment and try again.',
+            error: `Too many requests — please wait ${retryAfter} seconds and try again.`,
             code: 'THROTTLED',
+            retryAfter: retryAfter,
           },
           { status: 429 }
         );

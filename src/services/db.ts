@@ -32,12 +32,12 @@ function getDb(): Firestore | null {
 const COLLECTION_NAME = process.env.SESSIONS_COLLECTION || 'SentiLensSessions';
 
 // Mock storage for testing or when Firebase is not configured
-const mockStorage: Record<string, any> = {};
+const mockStorage: Record<string, Record<string, unknown>> = {};
 
 /**
  * Save session memory to Firestore.
  */
-export async function saveSessionMemory(sessionId: string, data: any) {
+export async function saveSessionMemory(sessionId: string, data: Record<string, unknown>) {
   const firestore = getDb();
   
   if (!firestore) {

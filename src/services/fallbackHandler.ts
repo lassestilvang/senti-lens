@@ -1,8 +1,7 @@
 /**
- * Central error handling and fallback logic for SentiLens.
- *
  * Implements the failure-mode response matrix from idea.md section 18.3.
  */
+import { ServiceError } from './geminiVision';
 
 export interface FallbackResult {
   shouldFallback: boolean;
@@ -42,6 +41,19 @@ export function handleServiceError(serviceName: string, error: unknown): Fallbac
 
   switch (serviceName) {
     case 'vision':
+      const serviceError = error as ServiceError;
+      const isThrottled = serviceError.code === 'THROTTLED' || errorMessage.includes('429');
+      const retryAfter = serviceError.retryAfter;
+      
+      if (isThrottled) {
+        return {
+          shouldFallback: true,
+          userMessage: retryAfter 
+            ? `Too many requests. Please wait ${retryAfter} seconds before trying again.`
+            : 'I am taking a quick break. Please try again in a moment.',
+          severity: 'warning',
+        };
+      }
       return {
         shouldFallback: true,
         userMessage: 'I am still analyzing. Please try again in a moment.',
