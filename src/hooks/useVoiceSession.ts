@@ -212,35 +212,9 @@ export function useVoiceSession(
     }
   }, []);
 
-  // Barge-in check (VAD)
-  useEffect(() => {
-    if (!isCapturing || !analyzer || !isConnected) return;
-
-    let rafId: number;
-    const buffer = new Uint8Array(analyzer.fftSize);
-    const threshold = 50; // Simple threshold for barge-in
-
-    const checkVolume = () => {
-      analyzer.getByteTimeDomainData(buffer);
-      let maxVal = 0;
-      for (let i = 0; i < buffer.length; i++) {
-        const val = Math.abs(buffer[i] - 128);
-        if (val > maxVal) maxVal = val;
-      }
-
-      if (maxVal > threshold) {
-        // User is speaking, trigger local interrupt
-        const session = sessionRef.current;
-        if (session) {
-           session.interrupt();
-        }
-      }
-      rafId = requestAnimationFrame(checkVolume);
-    };
-
-    rafId = requestAnimationFrame(checkVolume);
-    return () => cancelAnimationFrame(rafId);
-  }, [isCapturing, analyzer, isConnected]);
+  // Barge-in / VAD is handled server-side by the Multimodal Live API.
+  // When the server detects user speech, it sends an 'interrupted' signal
+  // which is handled in GeminiLiveSession.processOutputEvent().
 
   // Cleanup on unmount
   useEffect(() => {

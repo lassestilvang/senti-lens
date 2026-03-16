@@ -208,7 +208,9 @@ export class GeminiLiveSession {
     };
 
     this.ws.onclose = (event) => {
+      console.log(`[GeminiLiveSession] WebSocket closed: code=${event.code}, reason=${event.reason}, wasClean=${event.wasClean}`);
       this.isActive = false;
+      this.isSetupComplete = false;
       this.emit({ type: 'disconnected' });
 
       // Attempt reconnection if not closed cleanly
