@@ -171,7 +171,7 @@ export class GeminiLiveSession {
     }
 
     // Use the latest native audio model for the best experience
-    const modelId = process.env.NEXT_PUBLIC_GEMINI_MODEL_ID || this.config.modelId || 'gemini-2.5-flash-native-audio-preview-12-2025';
+    const modelId = /*process.env.NEXT_PUBLIC_GEMINI_MODEL_ID || this.config.modelId ||*/ 'gemini-2.5-flash-native-audio-preview-12-2025';
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     this.ws = new WebSocket(url);
