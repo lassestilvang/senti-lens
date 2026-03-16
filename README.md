@@ -6,13 +6,16 @@ SentiLens is a real-time assistive application designed to help visually impaire
 
 ```mermaid
 graph TD
-    Client[Next.js Frontend] -->|Camera Stream| Vision_Service[Gemini 3.0 Flash]
+    Client[Next.js Frontend] -->|Frame Capture| API_Analyze[/api/analyze]
+    API_Analyze -->|Vision/OCR| Gemini_Flash[Google Gemini 3.0 Flash]
+    
     Client <-->|WebSocket| Live_API[Gemini Multimodal Live API]
-    Vision_Service -->|JSON Analysis| Client
+    
+    API_Analyze -->|JSON Results| Client
     Live_API -->|Real-Time Voice| Client
     
-    API_Routes -->|Vision/Grounding| Gemini_Flash[Google Gemini 3.0 Flash]
-    Client -->|Memory/Goals| Firestore[Firebase Firestore]
+    Client <-->|Session State| API_Memory[/api/memory]
+    API_Memory <-->|Persistence| Firestore[Firebase Firestore]
     
     subgraph GCP/Firebase
     Gemini_Flash
@@ -21,11 +24,11 @@ graph TD
     end
 ```
 
-- **Client-Side:** Next.js application capturing video frames and audio.
-- **Real-Time Pipeline:** Direct WebSocket connection to the Gemini Multimodal Live API.
-- **Vision:** Gemini 3.0 Flash handles OCR and scene reasoning via high-performance multimodal endpoints.
-- **Grounding:** Function Calling (Tools) allows the AI to verify facts against external databases.
-- **Memory:** Firestore stores persistent user context and environmental knowledge.
+- **Client-Side:** Next.js application capturing video frames and audio for processing.
+- **Real-Time Pipeline:** Direct WebSocket connection to the Gemini Multimodal Live API (using Gemini 2.5 Flash Audio Preview for ultra-low latency).
+- **Vision:** Gemini 3.0 Flash handles OCR and scene reasoning via Next.js API routes (`/api/analyze`).
+- **Grounding:** Reasoning-based verification. *Note: External database integration for grocery and medical fact-checking is currently simulated/mocked for the MVP.*
+- **Memory:** Firebase Firestore stores persistent user context and environmental knowledge, bridged via `/api/memory`.
 
 ## Features
 
