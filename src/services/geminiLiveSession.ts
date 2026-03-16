@@ -124,6 +124,7 @@ export class GeminiLiveSession {
   private reconnectTimeout: NodeJS.Timeout | null = null;
 
   constructor(config: VoiceSessionConfig) {
+    console.error('[GeminiLiveSession] Initialized with config:', { sessionId: config.sessionId, hasApiKey: !!config.apiKey });
     this.config = config;
   }
 
@@ -170,25 +171,24 @@ export class GeminiLiveSession {
       throw new Error('Missing Google API Key (NEXT_PUBLIC_GOOGLE_API_KEY)');
     }
 
-    // Use the latest native audio model for the best experience
-    const modelId = /*process.env.NEXT_PUBLIC_GEMINI_MODEL_ID || this.config.modelId ||*/ 'gemini-2.5-flash-native-audio-preview-12-2025';
+    // Flagship model for Gemini Multimodal Live API according to Gemini skills
+    const modelId = 'gemini-2.5-flash-native-audio-preview-12-2025';
     const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
+      console.error('[GeminiLiveSession] WebSocket opened');
       this.isActive = true;
       this.reconnectAttempts = 0;
       this.emit({ type: 'connected' });
-
-      // ... rest of setup ...
 
       // Send setup message (using camelCase for protocol consistency)
       const setupMsg = {
         setup: {
           model: `models/${modelId}`,
           generationConfig: {
-            responseModalities: ['audio'],
+            responseModalities: ['AUDIO'],
           },
           systemInstruction: {
             parts: [{ text: buildSystemPrompt(this.config.memoryContext, this.config.userGoal) }],
@@ -200,11 +200,22 @@ export class GeminiLiveSession {
           ],
         },
       };
+      console.error('[GeminiLiveSession] Sending setup message:', JSON.stringify(setupMsg, null, 2));
       this.ws?.send(JSON.stringify(setupMsg));
     };
 
-    this.ws.onmessage = (event) => {
-      this.processOutputEvent(event.data);
+    this.ws.onmessage = async (event) => {
+      console.error('[GeminiLiveSession] onmessage received, data type:', typeof event.data, event.data instanceof Blob ? 'Blob' : '');
+      if (event.data instanceof Blob) {
+        try {
+          const text = await event.data.text();
+          this.processOutputEvent(text);
+        } catch (err) {
+          console.error('[GeminiLiveSession] Error reading Blob data:', err);
+        }
+      } else {
+        this.processOutputEvent(event.data);
+      }
     };
 
     this.ws.onclose = (event) => {
@@ -227,19 +238,14 @@ export class GeminiLiveSession {
     };
   }
 
-  private processOutputEvent(data: Blob | string): void {
-    if (typeof data !== 'string') {
-      // Data might be binary audio if configured as such, but Multimodal Live API 
-      // usually sends JSON with base64 audio in this alpha version.
-      return;
-    }
-
+  private processOutputEvent(data: string): void {
+    console.error('[GeminiLiveSession] Processing data (length):', data.length);
     try {
       const payload = JSON.parse(data);
-      console.log('[GeminiLiveSession] Received payload:', Object.keys(payload));
+      console.error('[GeminiLiveSession] Received payload:', Object.keys(payload));
 
       if (payload.setupComplete) {
-        console.log('[GeminiLiveSession] Setup complete');
+        console.error('[GeminiLiveSession] Setup complete');
         this.isSetupComplete = true;
         this.emit({ type: 'sessionStarted' });
         return;
@@ -247,20 +253,20 @@ export class GeminiLiveSession {
 
       if (payload.serverContent) {
         const content = payload.serverContent;
-        console.log('[GeminiLiveSession] Server content:', Object.keys(content));
+        console.error('[GeminiLiveSession] Server content:', Object.keys(content));
 
         if (content.modelTurn) {
           const parts = content.modelTurn.parts || [];
-          console.log(`[GeminiLiveSession] Model turn parts: ${parts.length}`);
+          console.error(`[GeminiLiveSession] Model turn parts: ${parts.length}`);
           for (const part of parts) {
             if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
-              console.log('[GeminiLiveSession] Playing received audio chunk');
+              console.error('[GeminiLiveSession] Playing received audio chunk');
               const audioBytes = Uint8Array.from(atob(part.inlineData.data), c => c.charCodeAt(0));
               this.playAudio(audioBytes.buffer);
               this.emit({ type: 'audio', audio: audioBytes.buffer });
             }
             if (part.text) {
-              console.log('[GeminiLiveSession] Received text:', part.text);
+              console.error('[GeminiLiveSession] Received text:', part.text);
               this.emit({ type: 'text', text: part.text });
             }
           }
@@ -409,11 +415,12 @@ export class GeminiLiveSession {
         functionResponses: [
           {
             id: toolUseId,
-            response: typeof result === 'string' ? { output: { result } } : { output: result },
+            response: typeof result === 'string' ? { output: result } : result,
           },
         ],
       },
     };
+    console.error('[GeminiLiveSession] Sending tool result:', JSON.stringify(msg, null, 2));
     this.ws.send(JSON.stringify(msg));
   }
 
