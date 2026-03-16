@@ -76,6 +76,49 @@ Run the test suite:
 npm test
 ```
 
+## Deployment
+
+SentiLens is optimized for deployment on **Firebase Hosting**.
+
+### 1. Simple Deployment (Static Export)
+The current repository is pre-configured for static export to Firebase.
+
+1.  **Export the project:**
+    ```bash
+    npm run build
+    ```
+    *(Ensure `output: 'export'` is set in `next.config.ts` if not already present)*
+
+2.  **Initialize Firebase:**
+    ```bash
+    firebase login
+    firebase init hosting
+    ```
+    *Select your project and set the public directory to `out`.*
+
+3.  **Deploy:**
+    ```bash
+    firebase deploy
+    ```
+
+### 2. Next.js App Hosting (Recommended for API Routes)
+For full SSR and API Route support (required for `/api/analyze`), use the modern Firebase Next.js integration:
+
+1.  **Enable App Hosting:**
+    Navigate to the [Firebase Console](https://console.firebase.google.com/) and enable "App Hosting" for your project.
+
+2.  **Connect to GitHub:**
+    Follow the setup wizard to connect your repository. Firebase will automatically detect Next.js and handle the build/deploy pipeline.
+
+3.  **Configure Environment Variables:**
+    Add your `NEXT_PUBLIC_GOOGLE_API_KEY` in the Firebase App Hosting dashboard.
+
+## Troubleshooting
+
+- **Audio Permission:** Ensure your production domain is served over HTTPS, otherwise microphone access will be blocked by the browser.
+- **API Key Restrictions:** In Google Cloud Console, whitelist your deployment domain (e.g., `senti-lens.web.app`) for your Gemini API key.
+- **429 Errors:** If you hit rate limits often, consider moving the API calls to a backend service with a dedicated service account rather than using a public-facing API key.
+
 ## License
 
 MIT
